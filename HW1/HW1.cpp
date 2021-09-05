@@ -6,8 +6,9 @@
 
 void winsock_test(void)
 {
-	char host[] = "www.yahoo.com";
-	char path[] = "/";
+	char host[] = "irl.cse.tamu.edu";
+	u_short port = 80;
+	char path[] = "/contact/";
 	// string pointing to an HTTP server (DNS name or IP)
 	// char str [] = "irl.cse.tamu.edu";
 	//char str [] = "128.194.135.72";
@@ -58,7 +59,7 @@ void winsock_test(void)
 
 	// setup the port # and protocol type
 	server.sin_family = AF_INET;
-	server.sin_port = htons(80);		// host-to-network flips the byte order
+	server.sin_port = htons(port);		// host-to-network flips the byte order
 
 	// connect to the server on port 80
 	if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
@@ -71,11 +72,9 @@ void winsock_test(void)
 
 	// send HTTP requests here
 
-	char requestFmt[] = "GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n";
-	char sendBuf[1024];
-	snprintf(sendBuf, 1024 - 1, requestFmt, path, host);
-
-	//char sendBuf[] = "GET / HTTP/1.0\r\nHost: irl.cse.tamu.edu\r\nConnection: close\r\n\r\n";
+	const char *requestFmt = "GET %s HTTP/1.0\r\nUser-agent: myTAMUcrawler/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n";
+	char sendBuf[4096];
+	snprintf(sendBuf, sizeof(sendBuf), requestFmt, path, host);
 
 	printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
 	if (send(sock, sendBuf, sizeof(sendBuf), 0) == SOCKET_ERROR) {
@@ -86,7 +85,7 @@ void winsock_test(void)
 	printf("byte send\n");
 
 	// read
-	int initialBufSize = 10000;
+	int initialBufSize = 50;
 	char* readBuf = new char[initialBufSize];
 	int allocatedSize = initialBufSize;
 	int curPos = 0;
@@ -115,7 +114,9 @@ void winsock_test(void)
 			curPos += bytes;
 
 			if (allocatedSize - curPos < threshold) {
-				readBuf = (char*)realloc(readBuf, allocatedSize);
+				int newSize = allocatedSize + 2048;
+				readBuf = (char*)realloc(readBuf, newSize);
+				allocatedSize = newSize;
 			}
 		}
 		else if (ret == 0) {
@@ -132,8 +133,34 @@ void winsock_test(void)
 	printf("%s\n", readBuf);
 
 
-	char* status = strstr(readBuf, "HTTP/1.0");
-	printf("status: %s\n", status);
+	int status = 0;
+	char* startOfStatus = strstr(readBuf, "HTTP/");
+	if (startOfStatus != NULL)
+	{
+		char skipStr[] = "HTTP/1.X ";
+		startOfStatus += strlen(skipStr);		
+		char statusStr[] = "0000";
+		strncpy_s(statusStr,strlen(statusStr), startOfStatus, 3);
+
+		status = atoi(statusStr);
+	}
+
+	printf("status code: %d\n", status);
+
+	// create new parser object
+	HTMLParserBase* parser = new HTMLParserBase;
+
+	char baseUrl[] = "http://www.tamu.edu";		// where this page came from; needed for construction of relative links
+
+	int nLinks;
+	char* linkBuffer = parser->Parse(readBuf, curPos, baseUrl, (int)strlen(baseUrl), &nLinks);
+
+	// check for errors indicated by negative values
+	if (nLinks < 0)
+		nLinks = 0;
+
+	printf("Found %d links:\n", nLinks);
+
 
 	// close the socket to this server; open again for the next one
 	closesocket(sock);
@@ -142,7 +169,7 @@ void winsock_test(void)
 	WSACleanup();
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 	winsock_test();
 }
 
