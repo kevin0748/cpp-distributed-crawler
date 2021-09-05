@@ -8,6 +8,10 @@
 #define PCH_H
 
 // add headers that you want to pre-compile here
+#include <iostream>
+#include <stdio.h>
+#include <windows.h>
+
 #include "HTMLParserBase.h"
 
 #endif //PCH_H
