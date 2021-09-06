@@ -3,6 +3,7 @@
 #include <string>
 #include <windows.h>
 
+
 using namespace std;
 
 class URLParser
@@ -22,4 +23,6 @@ public:
     int defaultPort();
     
     void print();   
+
+    string getRequest();
 };

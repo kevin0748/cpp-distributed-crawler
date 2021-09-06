@@ -47,7 +47,8 @@ bool Socket::Send(URLParser* urlParser) {
     // structure for connecting to server
     struct sockaddr_in server;
 
-    
+    clock_t timer = clock();
+    printf("\tDoing DNS... ");
     // first assume that the string is an IP address
     const char* host = urlParser->host.c_str();
     DWORD IP = inet_addr(host);
@@ -56,7 +57,8 @@ bool Socket::Send(URLParser* urlParser) {
         // if not a valid IP, then do a DNS lookup
         if ((remote = gethostbyname(host)) == NULL)
         {
-            printf("Invalid string: neither FQDN, nor IP address\n");
+            printf("failed with %d", WSAGetLastError());
+            //printf("Invalid string: neither FQDN, nor IP address\n");
             return false;
         }
         else // take the first IP address and copy into sin_addr
@@ -68,26 +70,29 @@ bool Socket::Send(URLParser* urlParser) {
         server.sin_addr.S_un.S_addr = IP;
     }
 
-    // TODO: IP
-    printf("\tDoing DNS... done in %d ms, found %d\n", 123, IP);
+    timer = clock() - timer;
+    printf("done in %d ms, found %s\n", 1000*timer/CLOCKS_PER_SEC, inet_ntoa(server.sin_addr));
 
     // setup the port # and protocol type
     server.sin_family = AF_INET;
     server.sin_port = htons(urlParser->port);		// host-to-network flips the byte order
 
+    timer = clock();
+    printf("\t\b\b* Connecting on page... ");
     // connect to the server on port 80
     if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
     {
         printf("Connection error: %d\n", WSAGetLastError());
         return false;
     }
-    printf("\t\b\b* Connecting on page... done in %d ms\n", 123);
+    timer = clock() - timer;
+    printf("done in %d ms\n", 1000 * timer / CLOCKS_PER_SEC);
 
     // printf("Successfully connected to %s (%s) on port %d\n", host, inet_ntoa(server.sin_addr), htons(server.sin_port));
 
     const char* requestFmt = "GET %s HTTP/1.0\r\nUser-agent: myTAMUcrawler/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n";
-    char sendBuf[4096];
-    snprintf(sendBuf, sizeof(sendBuf), requestFmt, urlParser->path.c_str(), urlParser->host.c_str());
+    char sendBuf[MAX_REQUEST_LEN];
+    snprintf(sendBuf, sizeof(sendBuf), requestFmt, urlParser->getRequest().c_str(), urlParser->host.c_str());
 
     // printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
     if (send(sock, sendBuf, sizeof(sendBuf), 0) == SOCKET_ERROR) {
@@ -123,7 +128,7 @@ bool Socket::Read(void)
 
             int bytes = recv(sock, buf + curPos, allocatedSize - curPos, 0);
             if (bytes == SOCKET_ERROR) {
-                printf("recv error: %d\n", WSAGetLastError());
+                printf("failed with %d on recv\n", WSAGetLastError());
                 break;
             }
 
@@ -136,7 +141,12 @@ bool Socket::Read(void)
             curPos += bytes; // adjust where the next recv goes
             if (allocatedSize - curPos < THRESHOLD) {
                 int newSize = allocatedSize * 2;
-                buf = (char*)realloc(buf, newSize);
+                char *newbuf = (char*)realloc(buf, newSize);
+                if (newbuf == nullptr) {
+                    printf("failed to realloc recv buffer\n");
+                    return false;
+                }
+                buf = newbuf;
                 allocatedSize = newSize;
             }
             // resize buffer; you can use realloc(), HeapReAlloc(), or

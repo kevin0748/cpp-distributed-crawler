@@ -166,37 +166,42 @@ int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		printf("invalid argument.\n");
 		printf("[Usage] HW1.exe $url\n");
-		exit(1);
+		exit(0);
 	}
 
 	printf("URL: %s\n", argv[1]);
 
+	printf("\tParsing URL... ");
 	URLParser *urlParser = new URLParser();
 	bool ret = urlParser->parse(argv[1]);
 	if (!ret) {
-		exit(1);
+		exit(0);
 	}
-	string request = urlParser->path + urlParser->query;
-	printf("\tParsing URL... host %s, port %d, request %s\n", 
+
+	printf("host %s, port %d, request %s\n", 
 		urlParser->host.c_str(), 
 		urlParser->port, 
-		request.c_str());
+		urlParser->getRequest().c_str());
 
 	Socket* sock = new Socket();
 	ret = sock->Send(urlParser);
 	if (!ret) {
-		exit(1);
+		exit(0);
 	}
 
+	clock_t timer = clock();
+	printf("\tLoading... ");
 	ret = sock->Read();
 	if (!ret) {
-		exit(1);
+		exit(0);
 	}
-	printf("\tLoading... done in %d ms with %d bytes\n", 123, sock->curPos);
+
+	timer = clock() - timer;
+	printf("done in %d ms with %d bytes\n", 1000 * timer/CLOCKS_PER_SEC, sock->curPos);
 
 	//printf("%s\n", sock->buf);
 
-
+	printf("\tVerifying header... ");
 	int status = 0;
 	char* startOfStatus = strstr(sock->buf, "HTTP/");
 	if (startOfStatus != NULL)
@@ -209,8 +214,12 @@ int main(int argc, char *argv[]) {
 
 		status = atoi(statusStr);
 	}
+	else {
+		printf("failed with non-HTTP header\n");
+		exit(0);
+	}
 
-	printf("\tVerifying header... status code %d\n", status);
+	printf("status code %d\n", status);
 
 	// create new parser object
 	HTMLParserBase* parser = new HTMLParserBase();
@@ -219,6 +228,8 @@ int main(int argc, char *argv[]) {
 		char baseUrl[512];
 		sprintf_s(baseUrl, "%s://%s", urlParser->scheme.c_str(), urlParser->host.c_str());
 
+		timer = clock();
+		printf("\t\b\b+ Parsing page... ");
 		int nLinks;
 		char* linkBuffer = parser->Parse(sock->buf, sock->curPos, baseUrl, (int)strlen(baseUrl), &nLinks);
 
@@ -226,8 +237,8 @@ int main(int argc, char *argv[]) {
 		if (nLinks < 0)
 			nLinks = 0;
 		
-		// TODO: count time
-		printf("\t\b\b+ Parsing page... done in %d ms with %d links\n", 123, nLinks);
+		timer = clock() - timer;
+		printf("done in %d ms with %d links\n", 1000* timer/ CLOCKS_PER_SEC, nLinks);
 	}
 
 	printf("--------------------------------------\n");

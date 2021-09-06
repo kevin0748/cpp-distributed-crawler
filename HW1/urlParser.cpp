@@ -16,6 +16,11 @@ bool URLParser::parse(char* url)
         sUrl = sUrl.substr(schemeEnd + 3); // skip `://`
     }
 
+    if (scheme != "http") {
+        printf("failed with invalid scheme\n");
+        return false;
+    }
+
     size_t fragmentStart = sUrl.find('#');
     if (fragmentStart != string::npos)
     {
@@ -60,6 +65,11 @@ bool URLParser::parseHostPort(string hostPort)
     size_t portStart = hostPort.find(":");
     if (portStart != string::npos)
     {
+        if (portStart + 1 >= hostPort.size()) {
+            printf("failed with invalid port\n");
+            return false;
+        }
+
         port = stoi(hostPort.substr(portStart + 1));
         host = hostPort.substr(0, portStart);
     }
@@ -74,6 +84,15 @@ bool URLParser::parseHostPort(string hostPort)
         printf("url parse failed: missing host\n");
         return false;
     }
+    else if (host.size() >= MAX_HOST_LEN) 
+    {
+        printf("failed with host len larger than MAX_HOST_LEN\n");
+    }
+
+    if (port == 0) {
+        printf("failed with invalid port\n");
+        return false;
+    }
 
     return true;
 }
@@ -84,10 +103,10 @@ int URLParser::defaultPort()
     {
         return 80;
     }
-    else if (scheme == "https")
+    /*else if (scheme == "https")
     {
         return 443;
-    }
+    }*/
 
     return 0;
 }
@@ -100,4 +119,13 @@ void URLParser::print()
     cout << "path: " << path << endl;
     cout << "fragment: " << fragment << endl;
     cout << "query: " << query << endl;
+}
+
+string URLParser::getRequest() {
+    string request = path;
+    if (query.size() > 0) {
+        request += "?" + query;
+    }
+
+    return path;
 }

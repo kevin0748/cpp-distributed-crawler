@@ -11,6 +11,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <windows.h>
+#include <ctime>
 
 #include "HTMLParserBase.h"
 #include "urlParser.h"
