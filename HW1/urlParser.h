@@ -10,7 +10,7 @@ class URLParser
 public:
     string scheme;
     string host;
-    int port;
+    int port = 0;
     string path;
     string query;
     string fragment;

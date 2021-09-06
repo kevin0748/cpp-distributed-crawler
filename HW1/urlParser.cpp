@@ -52,7 +52,7 @@ bool URLParser::parse(char* url)
         }
     }
 
-    print();
+    //print();
 }
 
 bool URLParser::parseHostPort(string hostPort)

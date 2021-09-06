@@ -47,6 +47,7 @@ bool Socket::Send(URLParser* urlParser) {
     // structure for connecting to server
     struct sockaddr_in server;
 
+    
     // first assume that the string is an IP address
     const char* host = urlParser->host.c_str();
     DWORD IP = inet_addr(host);
@@ -67,6 +68,9 @@ bool Socket::Send(URLParser* urlParser) {
         server.sin_addr.S_un.S_addr = IP;
     }
 
+    // TODO: IP
+    printf("\tDoing DNS... done in %d ms, found %d\n", 123, IP);
+
     // setup the port # and protocol type
     server.sin_family = AF_INET;
     server.sin_port = htons(urlParser->port);		// host-to-network flips the byte order
@@ -77,20 +81,21 @@ bool Socket::Send(URLParser* urlParser) {
         printf("Connection error: %d\n", WSAGetLastError());
         return false;
     }
+    printf("\t\b\b* Connecting on page... done in %d ms\n", 123);
 
-    printf("Successfully connected to %s (%s) on port %d\n", host, inet_ntoa(server.sin_addr), htons(server.sin_port));
+    // printf("Successfully connected to %s (%s) on port %d\n", host, inet_ntoa(server.sin_addr), htons(server.sin_port));
 
     const char* requestFmt = "GET %s HTTP/1.0\r\nUser-agent: myTAMUcrawler/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n";
     char sendBuf[4096];
     snprintf(sendBuf, sizeof(sendBuf), requestFmt, urlParser->path.c_str(), urlParser->host.c_str());
 
-    printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
+    // printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
     if (send(sock, sendBuf, sizeof(sendBuf), 0) == SOCKET_ERROR) {
         printf("Send error: %d\n", WSAGetLastError);
         return false;
     }
 
-    printf("byte send\n");
+    // printf("byte send\n");
     return true;
 }
 
@@ -123,7 +128,7 @@ bool Socket::Read(void)
             }
 
             if (bytes == 0) {
-                printf("conection close\n");
+                // printf("conection close\n");
                 buf[curPos] = '\0';
                 return true; // normal completion
             }

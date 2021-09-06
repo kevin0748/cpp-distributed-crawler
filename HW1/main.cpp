@@ -159,24 +159,28 @@ void winsock_test(void)
 	printf("Found %d links:\n", nLinks);
 
 
-	
+
 }
 
 int main(int argc, char *argv[]) {
-	//winsock_test();
-
-
 	if (argc != 2) {
 		printf("invalid argument.\n");
 		printf("[Usage] HW1.exe $url\n");
 		exit(1);
 	}
 
+	printf("URL: %s\n", argv[1]);
+
 	URLParser *urlParser = new URLParser();
 	bool ret = urlParser->parse(argv[1]);
 	if (!ret) {
 		exit(1);
 	}
+	string request = urlParser->path + urlParser->query;
+	printf("\tParsing URL... host %s, port %d, request %s\n", 
+		urlParser->host.c_str(), 
+		urlParser->port, 
+		request.c_str());
 
 	Socket* sock = new Socket();
 	ret = sock->Send(urlParser);
@@ -188,8 +192,9 @@ int main(int argc, char *argv[]) {
 	if (!ret) {
 		exit(1);
 	}
+	printf("\tLoading... done in %d ms with %d bytes\n", 123, sock->curPos);
 
-	printf("%s\n", sock->buf);
+	//printf("%s\n", sock->buf);
 
 
 	int status = 0;
@@ -205,21 +210,40 @@ int main(int argc, char *argv[]) {
 		status = atoi(statusStr);
 	}
 
-	printf("status code: %d\n", status);
+	printf("\tVerifying header... status code %d\n", status);
 
 	// create new parser object
-	HTMLParserBase* parser = new HTMLParserBase;
+	HTMLParserBase* parser = new HTMLParserBase();
 
-	char baseUrl[] = "http://www.tamu.edu";		// where this page came from; needed for construction of relative links
+	if (status >= 200 && status < 300) {
+		char baseUrl[512];
+		sprintf_s(baseUrl, "%s://%s", urlParser->scheme.c_str(), urlParser->host.c_str());
 
-	int nLinks;
-	char* linkBuffer = parser->Parse(sock->buf, sock->curPos, baseUrl, (int)strlen(baseUrl), &nLinks);
+		int nLinks;
+		char* linkBuffer = parser->Parse(sock->buf, sock->curPos, baseUrl, (int)strlen(baseUrl), &nLinks);
 
-	// check for errors indicated by negative values
-	if (nLinks < 0)
-		nLinks = 0;
+		// check for errors indicated by negative values
+		if (nLinks < 0)
+			nLinks = 0;
+		
+		// TODO: count time
+		printf("\t\b\b+ Parsing page... done in %d ms with %d links\n", 123, nLinks);
+	}
 
-	printf("Found %d links:\n", nLinks);
+	printf("--------------------------------------\n");
+
+
+	char *endOfHeader = strstr(sock->buf, "\r\n\r\n");
+	if (endOfHeader != nullptr) {
+		int offset = endOfHeader - sock->buf;
+		char* header = new char[offset + 1];
+		strncpy_s(header, offset + 1, sock->buf, offset);
+		printf("%s\n", header);
+	}
+	
+
+	// printf("Found %d links:\n", nLinks);
+	return 0;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
