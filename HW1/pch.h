@@ -13,5 +13,6 @@
 #include <windows.h>
 
 #include "HTMLParserBase.h"
-
+#include "urlParser.h"
+#include "socket.h"
 #endif //PCH_H

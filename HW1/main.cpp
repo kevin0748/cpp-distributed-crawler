@@ -9,9 +9,6 @@ void winsock_test(void)
 	char host[] = "irl.cse.tamu.edu";
 	u_short port = 80;
 	char path[] = "/contact/";
-	// string pointing to an HTTP server (DNS name or IP)
-	// char str [] = "irl.cse.tamu.edu";
-	//char str [] = "128.194.135.72";
 
 	WSADATA wsaData;
 
@@ -162,15 +159,67 @@ void winsock_test(void)
 	printf("Found %d links:\n", nLinks);
 
 
-	// close the socket to this server; open again for the next one
-	closesocket(sock);
-
-	// call cleanup when done with everything and ready to exit program
-	WSACleanup();
+	
 }
 
 int main(int argc, char *argv[]) {
-	winsock_test();
+	//winsock_test();
+
+
+	if (argc != 2) {
+		printf("invalid argument.\n");
+		printf("[Usage] HW1.exe $url\n");
+		exit(1);
+	}
+
+	URLParser *urlParser = new URLParser();
+	bool ret = urlParser->parse(argv[1]);
+	if (!ret) {
+		exit(1);
+	}
+
+	Socket* sock = new Socket();
+	ret = sock->Send(urlParser);
+	if (!ret) {
+		exit(1);
+	}
+
+	ret = sock->Read();
+	if (!ret) {
+		exit(1);
+	}
+
+	printf("%s\n", sock->buf);
+
+
+	int status = 0;
+	char* startOfStatus = strstr(sock->buf, "HTTP/");
+	if (startOfStatus != NULL)
+	{
+		char skipStr[] = "HTTP/1.X ";
+		startOfStatus += strlen(skipStr);
+		char statusStr[4];
+		strncpy_s(statusStr, sizeof(statusStr), startOfStatus, 3);
+		statusStr[3] = '\0';
+
+		status = atoi(statusStr);
+	}
+
+	printf("status code: %d\n", status);
+
+	// create new parser object
+	HTMLParserBase* parser = new HTMLParserBase;
+
+	char baseUrl[] = "http://www.tamu.edu";		// where this page came from; needed for construction of relative links
+
+	int nLinks;
+	char* linkBuffer = parser->Parse(sock->buf, sock->curPos, baseUrl, (int)strlen(baseUrl), &nLinks);
+
+	// check for errors indicated by negative values
+	if (nLinks < 0)
+		nLinks = 0;
+
+	printf("Found %d links:\n", nLinks);
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
