@@ -1,5 +1,7 @@
-// HW1.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+/**
+	This is course project of CSCE612@2021Fall
+	author: Chen Chuan Chang
+*/
 
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")

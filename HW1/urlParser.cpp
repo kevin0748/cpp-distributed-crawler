@@ -1,3 +1,8 @@
+/**
+    This is course project of CSCE612@2021Fall
+    author: Chen Chuan Chang
+*/
+
 #include "pch.h"
 
 bool URLParser::parse(char* url)
