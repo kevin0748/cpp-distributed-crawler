@@ -127,5 +127,5 @@ string URLParser::getRequest() {
         request += "?" + query;
     }
 
-    return path;
+    return request;
 }
