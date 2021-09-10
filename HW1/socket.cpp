@@ -99,7 +99,7 @@ bool Socket::Send(URLParser* urlParser, const char* method) {
     char sendBuf[MAX_REQUEST_LEN];
     snprintf(sendBuf, sizeof(sendBuf), requestFmt, method, urlParser->getRequest().c_str(), urlParser->host.c_str());
 
-    printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
+    //printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
     if (send(sock, sendBuf, sizeof(sendBuf), 0) == SOCKET_ERROR) {
         printf("Send error: %d\n", WSAGetLastError);
         return false;
@@ -121,6 +121,8 @@ bool Socket::Read(int maxDownloadSize)
     timeout.tv_sec = 10;
     timeout.tv_usec = 0;
 
+    clock_t downloadTimer = clock();
+
     while (true)
     {
         FD_ZERO(&rfd);
@@ -139,11 +141,23 @@ bool Socket::Read(int maxDownloadSize)
 
             if (bytes == 0) {
                 // printf("conection close\n");
-                buf[curPos] = '\0';
+                buf[curPos] = NULL;
                 return true; // normal completion
             }
 
             curPos += bytes; // adjust where the next recv goes
+
+            if (curPos > maxDownloadSize) {
+                printf("exceed maxDownloadSize\n");
+                return false;
+            }
+            if ( (clock() - downloadTimer)/CLOCKS_PER_SEC > MAX_DOWNLOAD_TIME) {
+                printf("exceed maxDownloadTime\n");
+                return false;
+            }
+
+            // resize buffer; you can use realloc(), HeapReAlloc(), or
+            // memcpy the buffer into a bigger array
             if (allocatedSize - curPos < THRESHOLD) {
                 int newSize = allocatedSize * 2;
                 char *newbuf = (char*)realloc(buf, newSize);
@@ -154,8 +168,7 @@ bool Socket::Read(int maxDownloadSize)
                 buf = newbuf;
                 allocatedSize = newSize;
             }
-            // resize buffer; you can use realloc(), HeapReAlloc(), or
-            // memcpy the buffer into a bigger array
+            
         }
         else if (ret == 0) {
             // report timeout

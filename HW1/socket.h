@@ -7,6 +7,7 @@
 
 #define MAX_PAGE_DOWNLOAD_SIZE 2 * 1024 * 1024
 #define MAX_ROBOTS_DOWNLOAD_SIZE 16 * 1024
+#define MAX_DOWNLOAD_TIME 10 // in second
 
 #define HTTP_GET "GET"
 #define HTTP_HEAD "HEAD"
