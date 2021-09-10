@@ -21,7 +21,7 @@ public:
     string query;
     string fragment;
 
-    bool parse(char* url);
+    bool parse(const char* url);
    
     bool parseHostPort(string hostPort);
     

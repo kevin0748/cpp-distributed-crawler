@@ -6,42 +6,38 @@
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")
 
-int main(int argc, char *argv[]) {
-	if (argc != 2) {
-		printf("invalid argument.\n");
-		printf("[Usage] HW1.exe $url\n");
-		exit(0);
-	}
-
-	printf("URL: %s\n", argv[1]);
+void requestURL(Socket* sock, const char* url) {
+	URLParser* urlParser = new URLParser();
+	HTMLParserBase* parser = new HTMLParserBase();
+	
+	printf("URL: %s\n", url);
 
 	printf("\tParsing URL... ");
-	URLParser *urlParser = new URLParser();
-	bool ret = urlParser->parse(argv[1]);
+	bool ret = urlParser->parse(url);
 	if (!ret) {
-		exit(0);
+		exit(1);
 	}
 
-	printf("host %s, port %d, request %s\n", 
-		urlParser->host.c_str(), 
-		urlParser->port, 
+	printf("host %s, port %d, request %s\n",
+		urlParser->host.c_str(),
+		urlParser->port,
 		urlParser->getRequest().c_str());
 
-	Socket* sock = new Socket();
+
 	ret = sock->Send(urlParser);
 	if (!ret) {
-		exit(0);
+		exit(1);
 	}
 
 	clock_t timer = clock();
 	printf("\tLoading... ");
 	ret = sock->Read();
 	if (!ret) {
-		exit(0);
+		exit(1);
 	}
 
 	timer = clock() - timer;
-	printf("done in %d ms with %d bytes\n", 1000 * timer/CLOCKS_PER_SEC, sock->curPos);
+	printf("done in %d ms with %d bytes\n", 1000 * timer / CLOCKS_PER_SEC, sock->curPos);
 
 	//printf("%s\n", sock->buf);
 
@@ -60,13 +56,10 @@ int main(int argc, char *argv[]) {
 	}
 	else {
 		printf("failed with non-HTTP header\n");
-		exit(0);
+		exit(1);
 	}
 
 	printf("status code %d\n", status);
-
-	// create new parser object
-	HTMLParserBase* parser = new HTMLParserBase();
 
 	if (status >= 200 && status < 300) {
 		char baseUrl[512];
@@ -80,24 +73,44 @@ int main(int argc, char *argv[]) {
 		// check for errors indicated by negative values
 		if (nLinks < 0)
 			nLinks = 0;
-		
+
 		timer = clock() - timer;
-		printf("done in %d ms with %d links\n", 1000* timer/ CLOCKS_PER_SEC, nLinks);
+		printf("done in %d ms with %d links\n", 1000 * timer / CLOCKS_PER_SEC, nLinks);
 	}
 
 	printf("--------------------------------------\n");
 
 
-	char *endOfHeader = strstr(sock->buf, "\r\n\r\n");
+	char* endOfHeader = strstr(sock->buf, "\r\n\r\n");
 	if (endOfHeader != nullptr) {
 		int offset = endOfHeader - sock->buf;
-		char* header = new char[offset + 1];
+		char *header = new char[offset + 1];
 		strncpy_s(header, offset + 1, sock->buf, offset);
 		printf("%s\n", header);
+		delete header;
 	}
-	
 
-	// printf("Found %d links:\n", nLinks);
+	delete parser;
+	delete urlParser;
+
+	return;
+}
+
+int main(int argc, char *argv[]) {
+	if (argc != 2) {
+		printf("invalid argument.\n");
+		printf("[Usage] HW1.exe $url\n");
+		exit(0);
+	}
+
+	Socket* sock = new Socket();
+
+	requestURL(sock, argv[1]);
+	
+	delete sock;
+
+	printf("temo");
+
 	return 0;
 }
 

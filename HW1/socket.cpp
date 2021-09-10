@@ -31,7 +31,7 @@ Socket::Socket()
     }
 
     // create this buffer once, then possibly reuse for multiple connections in Part 3
-    buf = new char[INITIAL_BUF_SIZE];
+    buf = (char*)malloc(INITIAL_BUF_SIZE);
     allocatedSize = INITIAL_BUF_SIZE;
 }
 

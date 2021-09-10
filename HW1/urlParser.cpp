@@ -5,7 +5,7 @@
 
 #include "pch.h"
 
-bool URLParser::parse(char* url)
+bool URLParser::parse(const char* url)
 {
     string sUrl(url);
 
