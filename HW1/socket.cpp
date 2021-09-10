@@ -45,7 +45,7 @@ Socket::~Socket() {
     WSACleanup();
 }
 
-bool Socket::Send(URLParser* urlParser) {
+bool Socket::Send(URLParser* urlParser, const char* method) {
     // structure used in DNS lookups
     struct hostent* remote;
 
@@ -95,11 +95,11 @@ bool Socket::Send(URLParser* urlParser) {
 
     // printf("Successfully connected to %s (%s) on port %d\n", host, inet_ntoa(server.sin_addr), htons(server.sin_port));
 
-    const char* requestFmt = "GET %s HTTP/1.0\r\nUser-agent: myTAMUcrawler/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n";
+    const char* requestFmt = "%s %s HTTP/1.0\r\nUser-agent: myTAMUcrawler/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n";
     char sendBuf[MAX_REQUEST_LEN];
-    snprintf(sendBuf, sizeof(sendBuf), requestFmt, urlParser->getRequest().c_str(), urlParser->host.c_str());
+    snprintf(sendBuf, sizeof(sendBuf), requestFmt, method, urlParser->getRequest().c_str(), urlParser->host.c_str());
 
-    // printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
+    printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
     if (send(sock, sendBuf, sizeof(sendBuf), 0) == SOCKET_ERROR) {
         printf("Send error: %d\n", WSAGetLastError);
         return false;
@@ -109,7 +109,7 @@ bool Socket::Send(URLParser* urlParser) {
     return true;
 }
 
-bool Socket::Read(void)
+bool Socket::Read(int maxDownloadSize)
 {
     fd_set rfd;
  

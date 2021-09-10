@@ -6,6 +6,29 @@
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")
 
+int parseResponseStatus(char *const buf) {
+	printf("\tVerifying header... ");
+
+	int status = 0;
+	char* startOfStatus = strstr(buf, "HTTP/");
+	if (startOfStatus != NULL)
+	{
+		char skipStr[] = "HTTP/1.X ";
+		startOfStatus += strlen(skipStr);
+		char statusStr[4];
+		strncpy_s(statusStr, sizeof(statusStr), startOfStatus, 3);
+		statusStr[3] = '\0';
+
+		status = atoi(statusStr);
+	}
+	else {
+		printf("failed with non-HTTP header\n");
+		exit(1);
+	}
+
+	return status;
+}
+
 void requestURL(Socket* sock, const char* url) {
 	URLParser* urlParser = new URLParser();
 	HTMLParserBase* parser = new HTMLParserBase();
@@ -24,14 +47,14 @@ void requestURL(Socket* sock, const char* url) {
 		urlParser->getRequest().c_str());
 
 
-	ret = sock->Send(urlParser);
+	ret = sock->Send(urlParser, HTTP_GET);
 	if (!ret) {
 		exit(1);
 	}
 
 	clock_t timer = clock();
 	printf("\tLoading... ");
-	ret = sock->Read();
+	ret = sock->Read(MAX_PAGE_DOWNLOAD_SIZE);
 	if (!ret) {
 		exit(1);
 	}
@@ -41,24 +64,7 @@ void requestURL(Socket* sock, const char* url) {
 
 	//printf("%s\n", sock->buf);
 
-	printf("\tVerifying header... ");
-	int status = 0;
-	char* startOfStatus = strstr(sock->buf, "HTTP/");
-	if (startOfStatus != NULL)
-	{
-		char skipStr[] = "HTTP/1.X ";
-		startOfStatus += strlen(skipStr);
-		char statusStr[4];
-		strncpy_s(statusStr, sizeof(statusStr), startOfStatus, 3);
-		statusStr[3] = '\0';
-
-		status = atoi(statusStr);
-	}
-	else {
-		printf("failed with non-HTTP header\n");
-		exit(1);
-	}
-
+	int status = parseResponseStatus(sock->buf);
 	printf("status code %d\n", status);
 
 	if (status >= 200 && status < 300) {
@@ -84,10 +90,11 @@ void requestURL(Socket* sock, const char* url) {
 	char* endOfHeader = strstr(sock->buf, "\r\n\r\n");
 	if (endOfHeader != nullptr) {
 		int offset = endOfHeader - sock->buf;
-		char *header = new char[offset + 1];
-		strncpy_s(header, offset + 1, sock->buf, offset);
+		string::size_type size = offset + 1;
+		char *header = new char[size];
+		strncpy_s(header, size, sock->buf, offset);
 		printf("%s\n", header);
-		delete header;
+		delete []header;
 	}
 
 	delete parser;
@@ -108,8 +115,6 @@ int main(int argc, char *argv[]) {
 	requestURL(sock, argv[1]);
 	
 	delete sock;
-
-	printf("temo");
 
 	return 0;
 }

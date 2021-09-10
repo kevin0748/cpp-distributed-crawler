@@ -5,6 +5,12 @@
 
 #pragma once
 
+#define MAX_PAGE_DOWNLOAD_SIZE 2 * 1024 * 1024
+#define MAX_ROBOTS_DOWNLOAD_SIZE 16 * 1024
+
+#define HTTP_GET "GET"
+#define HTTP_HEAD "HEAD"
+
 class Socket
 {
 public:
@@ -15,6 +21,6 @@ public:
 
     Socket();
     ~Socket();
-    bool Send(URLParser* urlParser);
-    bool Read(void);
+    bool Send(URLParser* urlParser, const char* method);
+    bool Read(int maxDownloadSize);
 };
