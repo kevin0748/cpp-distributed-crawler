@@ -11,12 +11,15 @@
 
 #define HTTP_GET "GET"
 #define HTTP_HEAD "HEAD"
+
 #define INITIAL_BUF_SIZE 4096
 #define THRESHOLD 1024
 
 class Socket
 {
 public:
+    enum SendType{ robots, page};
+
     SOCKET sock;       // socket handle
     char* buf;         // current buffer
     int allocatedSize; // bytes allocated for buf
@@ -24,6 +27,6 @@ public:
 
     Socket();
     ~Socket();
-    bool Send(URLParser* urlParser, const char* method);
+    bool Send(URLParser* urlParser, SendType sendType);
     bool Read(int maxDownloadSize);
 };

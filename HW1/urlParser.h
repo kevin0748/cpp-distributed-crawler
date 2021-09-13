@@ -20,6 +20,10 @@ public:
     string path;
     string query;
     string fragment;
+    in_addr hostAddr;
+
+    URLParser();
+    ~URLParser();
 
     bool parse(const char* url);
    
@@ -32,4 +36,6 @@ public:
     string getRequest();
 
     string getRobots();
+
+    bool dnsLookup();
 };
