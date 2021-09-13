@@ -134,3 +134,7 @@ string URLParser::getRequest() {
 
     return request;
 }
+
+string URLParser::getRobots() {
+    return "/robots.txt";
+}

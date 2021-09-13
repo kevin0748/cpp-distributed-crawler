@@ -83,7 +83,8 @@ bool Socket::Send(URLParser* urlParser, const char* method) {
     server.sin_port = htons(urlParser->port);		// host-to-network flips the byte order
 
     timer = clock();
-    printf("\t\b\b* Connecting on page... ");
+    // TODO
+    printf("\t\b\b* Connecting on %s... ","TBD");
     // connect to the server on port 80
     if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
     {
@@ -97,9 +98,17 @@ bool Socket::Send(URLParser* urlParser, const char* method) {
 
     const char* requestFmt = "%s %s HTTP/1.0\r\nUser-agent: myTAMUcrawler/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n";
     char sendBuf[MAX_REQUEST_LEN];
-    snprintf(sendBuf, sizeof(sendBuf), requestFmt, method, urlParser->getRequest().c_str(), urlParser->host.c_str());
 
-    //printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
+    if (strcmp(method, HTTP_HEAD) == 0) {
+        snprintf(sendBuf, sizeof(sendBuf), requestFmt, method, "/robots.txt", urlParser->host.c_str());
+    } else if (strcmp(method, HTTP_GET) == 0) {
+        snprintf(sendBuf, sizeof(sendBuf), requestFmt, method, urlParser->getRequest().c_str(), urlParser->host.c_str());
+    }
+    else {
+        // TODO
+    }
+
+    // printf("len: %d str:%s\n", sizeof(sendBuf), sendBuf);
     if (send(sock, sendBuf, sizeof(sendBuf), 0) == SOCKET_ERROR) {
         printf("Send error: %d\n", WSAGetLastError);
         return false;
@@ -107,6 +116,17 @@ bool Socket::Send(URLParser* urlParser, const char* method) {
 
     // printf("byte send\n");
     return true;
+}
+
+bool makeRequest(const char* method, char* request) {
+    if (strcmp(method, HTTP_HEAD) == 0) {
+
+        return true;
+    } else if (strcmp(method, HTTP_GET) == 0) {
+        return true;
+    }
+    
+    return false;
 }
 
 bool Socket::Read(int maxDownloadSize)

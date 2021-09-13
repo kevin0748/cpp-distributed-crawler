@@ -30,4 +30,6 @@ public:
     void print();   
 
     string getRequest();
+
+    string getRobots();
 };

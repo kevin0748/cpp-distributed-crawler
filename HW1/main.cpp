@@ -26,19 +26,21 @@ int parseResponseStatus(char *const buf) {
 		exit(1);
 	}
 
+	printf("status code %d\n", status);
 	return status;
 }
 
-void requestURL(Socket* sock, const char* url) {
+void requestURL(const char* url) {
 	URLParser* urlParser = new URLParser();
 	HTMLParserBase* parser = new HTMLParserBase();
-	
+	Socket* sock = new Socket();
+
 	printf("URL: %s\n", url);
 
 	printf("\tParsing URL... ");
 	bool ret = urlParser->parse(url);
 	if (!ret) {
-		exit(1);
+		return;
 	}
 
 	printf("host %s, port %d, request %s\n",
@@ -47,12 +49,41 @@ void requestURL(Socket* sock, const char* url) {
 		urlParser->getRequest().c_str());
 
 
+	// check host uniqueness
+
+	// robot
+	ret = sock->Send(urlParser, HTTP_HEAD);
+	if (!ret) {
+		return;
+	}
+
+	clock_t timer = clock();
+	printf("\tLoading... ");
+	ret = sock->Read(MAX_ROBOTS_DOWNLOAD_SIZE);
+	if (!ret) {
+		exit(1);
+	}
+
+	timer = clock() - timer;
+	printf("done in %d ms with %d bytes\n", 1000 * timer / CLOCKS_PER_SEC, sock->curPos);
+
+	//printf("%s\n", sock->buf);
+
+	int status = parseResponseStatus(sock->buf);
+	if (status < 400 || status >= 500) {
+		// robots.txt exists. We should skip this website.
+		return;
+	}
+
+	delete sock;
+	
+	sock = new Socket();
+
 	ret = sock->Send(urlParser, HTTP_GET);
 	if (!ret) {
 		exit(1);
 	}
 
-	clock_t timer = clock();
 	printf("\tLoading... ");
 	ret = sock->Read(MAX_PAGE_DOWNLOAD_SIZE);
 	if (!ret) {
@@ -64,8 +95,7 @@ void requestURL(Socket* sock, const char* url) {
 
 	//printf("%s\n", sock->buf);
 
-	int status = parseResponseStatus(sock->buf);
-	printf("status code %d\n", status);
+	status = parseResponseStatus(sock->buf);
 
 	if (status >= 200 && status < 300) {
 		char baseUrl[512];
@@ -99,6 +129,7 @@ void requestURL(Socket* sock, const char* url) {
 
 	delete parser;
 	delete urlParser;
+	delete sock;
 
 	return;
 }
@@ -110,11 +141,7 @@ int main(int argc, char *argv[]) {
 		exit(0);
 	}
 
-	Socket* sock = new Socket();
-
-	requestURL(sock, argv[1]);
-	
-	delete sock;
+	requestURL(argv[1]);
 
 	return 0;
 }
