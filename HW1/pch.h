@@ -21,4 +21,5 @@
 #include "HTMLParserBase.h"
 #include "urlParser.h"
 #include "socket.h"
+#include "request.h"
 #endif //PCH_H
