@@ -6,7 +6,7 @@
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")
 
-int parseResponseStatus(char *const buf) {
+int parseResponseStatus(char* const buf) {
 	printf("\tVerifying header... ");
 
 	int status = 0;
@@ -23,7 +23,7 @@ int parseResponseStatus(char *const buf) {
 	}
 	else {
 		printf("failed with non-HTTP header\n");
-		exit(1);
+		return -1;
 	}
 
 	printf("status code %d\n", status);
@@ -32,7 +32,7 @@ int parseResponseStatus(char *const buf) {
 
 void requestURL(const char* url) {
 	URLParser* urlParser = new URLParser();
-	HTMLParserBase* parser = new HTMLParserBase();
+	HTMLParserBase* htmlParser = new HTMLParserBase();
 	Socket* sock = new Socket();
 
 	printf("URL: %s\n", url);
@@ -61,7 +61,7 @@ void requestURL(const char* url) {
 	printf("\tLoading... ");
 	ret = sock->Read(MAX_ROBOTS_DOWNLOAD_SIZE);
 	if (!ret) {
-		exit(1);
+		return;
 	}
 
 	timer = clock() - timer;
@@ -76,18 +76,18 @@ void requestURL(const char* url) {
 	}
 
 	delete sock;
-	
+
 	sock = new Socket();
 
 	ret = sock->Send(urlParser, HTTP_GET);
 	if (!ret) {
-		exit(1);
+		return;
 	}
 
 	printf("\tLoading... ");
 	ret = sock->Read(MAX_PAGE_DOWNLOAD_SIZE);
 	if (!ret) {
-		exit(1);
+		return;
 	}
 
 	timer = clock() - timer;
@@ -96,15 +96,17 @@ void requestURL(const char* url) {
 	//printf("%s\n", sock->buf);
 
 	status = parseResponseStatus(sock->buf);
-
-	if (status >= 200 && status < 300) {
+	if (status == -1) {
+		return;
+	}
+	else if (status >= 200 && status < 300) {
 		char baseUrl[512];
 		sprintf_s(baseUrl, "%s://%s", urlParser->scheme.c_str(), urlParser->host.c_str());
 
 		timer = clock();
 		printf("\t\b\b+ Parsing page... ");
 		int nLinks;
-		char* linkBuffer = parser->Parse(sock->buf, sock->curPos, baseUrl, (int)strlen(baseUrl), &nLinks);
+		char* linkBuffer = htmlParser->Parse(sock->buf, sock->curPos, baseUrl, (int)strlen(baseUrl), &nLinks);
 
 		// check for errors indicated by negative values
 		if (nLinks < 0)
@@ -114,34 +116,98 @@ void requestURL(const char* url) {
 		printf("done in %d ms with %d links\n", 1000 * timer / CLOCKS_PER_SEC, nLinks);
 	}
 
-	printf("--------------------------------------\n");
-
-
-	char* endOfHeader = strstr(sock->buf, "\r\n\r\n");
-	if (endOfHeader != nullptr) {
-		int offset = endOfHeader - sock->buf;
-		string::size_type size = offset + 1;
-		char *header = new char[size];
-		strncpy_s(header, size, sock->buf, offset);
-		printf("%s\n", header);
-		delete []header;
-	}
-
-	delete parser;
+	delete htmlParser;
 	delete urlParser;
 	delete sock;
 
 	return;
 }
 
-int main(int argc, char *argv[]) {
+void parseAndRequestURLs(const char* fileBuf, int fileSize) {
+	int readCursor = 0;
+	while (readCursor < fileSize) {
+		int lineLen = 0;
+		const char *endOfLine = strchr(fileBuf, '\n');
+		if (endOfLine == NULL) {
+			lineLen = strlen(fileBuf);
+		}
+		else {
+			lineLen = endOfLine - fileBuf + 1;
+		}
+
+		char *line = new char[lineLen + 1];
+		strncpy_s(line, lineLen + 1, fileBuf, lineLen);
+		line[lineLen] = NULL;
+		//printf("%d: %s\n", i++, url);
+
+		int urlLen = lineLen;
+		if (strchr(line, '\n')) {
+			--urlLen;
+		}
+		if (strchr(line, '\r')) {
+			--urlLen;
+		}
+		char* url = new char[urlLen + 1];
+		strncpy_s(url, urlLen + 1, line, urlLen);
+		url[urlLen] = NULL;
+
+		requestURL(url);
+		
+		fileBuf += lineLen;
+		readCursor += lineLen;
+
+		delete[]line;
+		delete[]url;
+	}
+}
+
+int main(int argc, char* argv[]) {
 	if (argc != 2) {
 		printf("invalid argument.\n");
 		printf("[Usage] HW1.exe $url\n");
 		exit(0);
 	}
 
-	requestURL(argv[1]);
+	char filename[] = "URL-input-100.txt";
+
+	HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		printf("CreateFile failed with %d\n", GetLastError());
+		return 0;
+	}
+
+	// get file size
+	LARGE_INTEGER li;
+	BOOL bRet = GetFileSizeEx(hFile, &li);
+	// process errors
+	if (bRet == 0)
+	{
+		printf("GetFileSizeEx error %d\n", GetLastError());
+		return 0;
+	}
+
+	// read file into a buffer
+	int fileSize = (DWORD)li.QuadPart;			// assumes file size is below 2GB; otherwise, an __int64 is needed
+	DWORD bytesRead;
+	// allocate buffer
+	char* fileBuf = new char[fileSize + 1];
+	// read into the buffer
+	bRet = ReadFile(hFile, fileBuf, fileSize, &bytesRead, NULL);
+	// process errors
+	if (bRet == 0 || bytesRead != fileSize)
+	{
+		printf("ReadFile failed with %d\n", GetLastError());
+		return 0;
+	}
+	fileBuf[fileSize] = NULL;
+
+	parseAndRequestURLs(fileBuf, fileSize);
+
+	// done with the file
+	CloseHandle(hFile);
+	delete fileBuf;
 
 	return 0;
 }

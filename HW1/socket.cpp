@@ -5,9 +5,6 @@
 
 #include "pch.h"
 
-#define INITIAL_BUF_SIZE 4096
-#define THRESHOLD 1024
-
 
 Socket::Socket()
 {

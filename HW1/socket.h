@@ -11,6 +11,8 @@
 
 #define HTTP_GET "GET"
 #define HTTP_HEAD "HEAD"
+#define INITIAL_BUF_SIZE 4096
+#define THRESHOLD 1024
 
 class Socket
 {
