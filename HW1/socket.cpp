@@ -5,9 +5,6 @@
 
 #include "pch.h"
 
-#define INITIAL_BUF_SIZE 4096
-#define THRESHOLD 1024
-
 
 Socket::Socket()
 {
@@ -45,45 +42,32 @@ Socket::~Socket() {
     WSACleanup();
 }
 
-bool Socket::Send(URLParser* urlParser, const char* method) {
-    // structure used in DNS lookups
-    struct hostent* remote;
+bool Socket::Send(URLParser* urlParser, SendType sendType) {
+    if (sendType != robots && sendType != page) {
+        printf("socket send: internal error\n");
+        return false;
+    }
+
+    if (!urlParser->dnsLookup()) {
+        return false;
+    }
 
     // structure for connecting to server
     struct sockaddr_in server;
-
-    clock_t timer = clock();
-    printf("\tDoing DNS... ");
-    // first assume that the string is an IP address
-    const char* host = urlParser->host.c_str();
-    DWORD IP = inet_addr(host);
-    if (IP == INADDR_NONE)
-    {
-        // if not a valid IP, then do a DNS lookup
-        if ((remote = gethostbyname(host)) == NULL)
-        {
-            printf("failed with %d", WSAGetLastError());
-            //printf("Invalid string: neither FQDN, nor IP address\n");
-            return false;
-        }
-        else // take the first IP address and copy into sin_addr
-            memcpy((char*)&(server.sin_addr), remote->h_addr, remote->h_length);
-    }
-    else
-    {
-        // if a valid IP, directly drop its binary version into sin_addr
-        server.sin_addr.S_un.S_addr = IP;
-    }
-
-    timer = clock() - timer;
-    printf("done in %d ms, found %s\n", 1000*timer/CLOCKS_PER_SEC, inet_ntoa(server.sin_addr));
+    server.sin_addr = urlParser->hostAddr;
 
     // setup the port # and protocol type
     server.sin_family = AF_INET;
     server.sin_port = htons(urlParser->port);		// host-to-network flips the byte order
 
-    timer = clock();
-    printf("\t\b\b* Connecting on page... ");
+    clock_t timer = clock();
+    if (sendType == robots) {
+        printf("\tConnecting on robots... ");
+    }
+    else if (sendType == page) {
+        printf("\t\b\b* Connecting on page... ");
+    }
+    
     // connect to the server on port 80
     if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
     {
@@ -97,9 +81,14 @@ bool Socket::Send(URLParser* urlParser, const char* method) {
 
     const char* requestFmt = "%s %s HTTP/1.0\r\nUser-agent: myTAMUcrawler/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n";
     char sendBuf[MAX_REQUEST_LEN];
-    snprintf(sendBuf, sizeof(sendBuf), requestFmt, method, urlParser->getRequest().c_str(), urlParser->host.c_str());
 
-    //printf("len: %d str:%s", sizeof(sendBuf), sendBuf);
+    if ( sendType == robots) {
+        snprintf(sendBuf, sizeof(sendBuf), requestFmt, HTTP_HEAD, "/robots.txt", urlParser->host.c_str());
+    } else if (sendType == page) {
+        snprintf(sendBuf, sizeof(sendBuf), requestFmt, HTTP_GET, urlParser->getRequest().c_str(), urlParser->host.c_str());
+    }
+    
+    // printf("len: %d str:%s\n", sizeof(sendBuf), sendBuf);
     if (send(sock, sendBuf, sizeof(sendBuf), 0) == SOCKET_ERROR) {
         printf("Send error: %d\n", WSAGetLastError);
         return false;
@@ -107,6 +96,17 @@ bool Socket::Send(URLParser* urlParser, const char* method) {
 
     // printf("byte send\n");
     return true;
+}
+
+bool makeRequest(const char* method, char* request) {
+    if (strcmp(method, HTTP_HEAD) == 0) {
+
+        return true;
+    } else if (strcmp(method, HTTP_GET) == 0) {
+        return true;
+    }
+    
+    return false;
 }
 
 bool Socket::Read(int maxDownloadSize)

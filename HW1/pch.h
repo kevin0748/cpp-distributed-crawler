@@ -17,8 +17,10 @@
 #include <stdio.h>
 #include <windows.h>
 #include <ctime>
+#include <unordered_set>
 
 #include "HTMLParserBase.h"
 #include "urlParser.h"
 #include "socket.h"
+#include "request.h"
 #endif //PCH_H
