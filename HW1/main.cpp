@@ -47,13 +47,18 @@ void parseAndRequestURLs(const char* fileBuf, int fileSize) {
 }
 
 int main(int argc, char* argv[]) {
-	if (argc != 2) {
+	if (argc != 3) {
 		printf("invalid argument.\n");
-		printf("[Usage] HW1.exe $url\n");
-		exit(0);
+		printf("[Usage] HW1.exe 1 $file\n");
+		exit(1);
 	}
 
-	char filename[] = "URL-input-100.txt";
+	if (strcmp(argv[1], "1") != 0) {
+		printf("number of threads must be equal to 1\n");
+		exit(1);
+	}
+
+	char *filename = argv[2];
 
 	HANDLE hFile = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL, NULL);
@@ -87,6 +92,8 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	fileBuf[fileSize] = NULL;
+
+	printf("Opened %s with size %d\n", filename, fileSize);
 
 	parseAndRequestURLs(fileBuf, fileSize);
 

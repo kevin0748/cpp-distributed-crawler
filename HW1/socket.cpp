@@ -62,7 +62,7 @@ bool Socket::Send(URLParser* urlParser, SendType sendType) {
 
     clock_t timer = clock();
     if (sendType == robots) {
-        printf("\t Connecting on robots... ");
+        printf("\tConnecting on robots... ");
     }
     else if (sendType == page) {
         printf("\t\b\b* Connecting on page... ");
