@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "request.h"
 
+unordered_set<string> seenHosts;
+
 Request::Request() {
 	urlParser = new URLParser();
 	htmlParser = new HTMLParserBase();
@@ -47,13 +49,21 @@ void Request::RequestURL(const char* url) {
 		return;
 	}
 
-	printf("host %s, port %d, request %s\n",
+	printf("host %s, port %d\n",
 		urlParser->host.c_str(),
 		urlParser->port,
 		urlParser->getRequest().c_str());
 
 
 	// check host uniqueness
+	printf("\tChecking host uniqueness... ");
+	if (seenHosts.find(urlParser->host) != seenHosts.end()) {
+		printf("failed\n");
+		return;
+	}
+
+	seenHosts.insert(urlParser->host);
+	printf("passed\n");
 
 	// robot
 	ret = sock->Send(urlParser, Socket::robots);

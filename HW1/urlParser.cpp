@@ -5,6 +5,8 @@
 
 #include "pch.h"
 
+unordered_set<ULONG> seenIPs;
+
 URLParser::URLParser() {
 	hostAddr.S_un.S_addr = 0;
 }
@@ -165,7 +167,7 @@ bool URLParser::dnsLookup() {
 		// if not a valid IP, then do a DNS lookup
 		if ((remote = gethostbyname(hostChars)) == NULL)
 		{
-			printf("failed with %d", WSAGetLastError());
+			printf("failed with %d\n", WSAGetLastError());
 			//printf("Invalid string: neither FQDN, nor IP address\n");
 			return false;
 		}
@@ -180,5 +182,16 @@ bool URLParser::dnsLookup() {
 
 	timer = clock() - timer;
 	printf("done in %d ms, found %s\n", 1000 * timer / CLOCKS_PER_SEC, inet_ntoa(hostAddr));
+
+	printf("\tChecking IP uniqueness... ");
+	//printf("int: %d\n str: %s\n", hostAddr.S_un.S_addr, inet_ntoa(hostAddr));
+	if (seenIPs.find(hostAddr.S_un.S_addr) != seenIPs.end()) {
+		printf("failed\n");
+		return false;
+	}
+
+	seenIPs.insert(hostAddr.S_un.S_addr);
+	printf("passed\n");
+
 	return true;
 }
