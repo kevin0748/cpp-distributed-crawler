@@ -6,7 +6,7 @@ public:
 	HTMLParserBase* htmlParser;
 	Socket* sock;
 
-	Request();
+	Request(HTMLParserBase* htmlParser);
 	~Request();
 
 	void RequestURL(const char* url);

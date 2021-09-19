@@ -7,6 +7,7 @@
 #pragma comment(lib, "ws2_32.lib")
 
 void parseAndRequestURLs(const char* fileBuf, int fileSize) {
+	HTMLParserBase* htmlParser = new HTMLParserBase();
 	int readCursor = 0;
 	while (readCursor < fileSize) {
 		int lineLen = 0;
@@ -34,7 +35,7 @@ void parseAndRequestURLs(const char* fileBuf, int fileSize) {
 		strncpy_s(url, urlLen + 1, line, urlLen);
 		url[urlLen] = NULL;
 
-		Request* req = new Request();
+		Request* req = new Request(htmlParser);
 		req->RequestURL(url);
 		
 		fileBuf += lineLen;
@@ -44,6 +45,8 @@ void parseAndRequestURLs(const char* fileBuf, int fileSize) {
 		delete[]line;
 		delete[]url;
 	}
+
+	delete htmlParser;
 }
 
 int main(int argc, char* argv[]) {

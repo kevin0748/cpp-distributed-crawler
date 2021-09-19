@@ -3,14 +3,13 @@
 
 unordered_set<string> seenHosts;
 
-Request::Request() {
+Request::Request(HTMLParserBase *_htmlParser) {
 	urlParser = new URLParser();
-	htmlParser = new HTMLParserBase();
+	htmlParser = _htmlParser;
 	sock = new Socket();
 }
 
 Request::~Request() {
-	delete htmlParser;
 	delete urlParser;
 	delete sock;
 }
