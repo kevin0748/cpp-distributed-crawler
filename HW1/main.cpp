@@ -6,8 +6,7 @@
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")
 
-void parseAndRequestURLs(const char* fileBuf, int fileSize) {
-	HTMLParserBase* htmlParser = new HTMLParserBase();
+void parseAndPushToCrawler(const char* fileBuf, int fileSize, Crawler *crawler) {
 	int readCursor = 0;
 	while (readCursor < fileSize) {
 		int lineLen = 0;
@@ -35,18 +34,64 @@ void parseAndRequestURLs(const char* fileBuf, int fileSize) {
 		strncpy_s(url, urlLen + 1, line, urlLen);
 		url[urlLen] = NULL;
 
-		Request* req = new Request(htmlParser);
-		req->RequestURL(url);
+		string sUrl(url);
+		crawler->Q.push(sUrl);
 		
 		fileBuf += lineLen;
 		readCursor += lineLen;
 
-		delete req;
 		delete[]line;
 		delete[]url;
 	}
+}
+
+DWORD WINAPI threadCrawler(LPVOID pParam) {
+	Crawler* crawler = ((Crawler*)pParam);
+	HTMLParserBase* htmlParser = new HTMLParserBase();
+
+	while (1) {
+		EnterCriticalSection(&(crawler->crawlerMutex)); // lock mutex
+
+		if (crawler->Q.size() == 0)
+		{
+			LeaveCriticalSection(&(crawler->crawlerMutex));
+			break;
+		}
+
+		string url = crawler->Q.front(); crawler->Q.pop();
+		LeaveCriticalSection(&(crawler->crawlerMutex));
+
+		crawler->Crawl(htmlParser, url);
+	}
 
 	delete htmlParser;
+	return 0;
+}
+
+DWORD WINAPI threadStats(LPVOID pParam) {
+	Crawler* crawler = (Crawler*)(pParam);
+	crawler->Stats();
+	return 0;
+}
+
+int runCrawler(Crawler* crawler, int threadNum) {
+	HANDLE* handles = new HANDLE[threadNum];
+	for (int i = 0; i < threadNum; ++i)
+	{
+		handles[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadCrawler, crawler, 0, NULL);
+		if (handles[i] == NULL) {
+			printf("failed to create thread %d\n", i);
+		}
+	}
+
+
+	for (int i = 0; i < threadNum; ++i)
+	{
+		WaitForSingleObject(handles[i], INFINITE);
+		CloseHandle(handles[i]);
+	}
+
+	return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -98,11 +143,15 @@ int main(int argc, char* argv[]) {
 
 	printf("Opened %s with size %d\n", filename, fileSize);
 
-	parseAndRequestURLs(fileBuf, fileSize);
+	int threadNum = 1000;
+	Crawler crawler;
+	parseAndPushToCrawler(fileBuf, fileSize, &crawler);
+
+	runCrawler(&crawler, threadNum);
 
 	// done with the file
 	CloseHandle(hFile);
-	delete fileBuf;
+	delete[] fileBuf;
 
 	return 0;
 }

@@ -42,19 +42,15 @@ Socket::~Socket() {
     WSACleanup();
 }
 
-bool Socket::Send(URLParser* urlParser, SendType sendType) {
+bool Socket::Send(URLParser* urlParser, struct  in_addr hostAddr, SendType sendType) {
     if (sendType != robots && sendType != page) {
         printf("socket send: internal error\n");
         return false;
     }
 
-    if (!urlParser->dnsLookup()) {
-        return false;
-    }
-
     // structure for connecting to server
     struct sockaddr_in server;
-    server.sin_addr = urlParser->hostAddr;
+    server.sin_addr = hostAddr;
 
     // setup the port # and protocol type
     server.sin_family = AF_INET;

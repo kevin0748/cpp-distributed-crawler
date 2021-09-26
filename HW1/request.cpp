@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "request.h"
 
-unordered_set<string> seenHosts;
-
 Request::Request(HTMLParserBase *_htmlParser) {
 	urlParser = new URLParser();
 	htmlParser = _htmlParser;
 	sock = new Socket();
+
+	hostAddr.S_un.S_addr = 0;
 }
 
 Request::~Request() {
@@ -39,8 +39,8 @@ int parseResponseStatus(char* const buf) {
 	return status;
 }
 
-void Request::RequestURL(const char* url) {
-	printf("URL: %s\n", url);
+void Request::RequestURL(string url) {
+	printf("URL: %s\n", url.c_str());
 
 	printf("\tParsing URL... ");
 	bool ret = urlParser->parse(url);
@@ -61,11 +61,17 @@ void Request::RequestURL(const char* url) {
 		return;
 	}
 
+	EnterCriticalSection(&hostMutex);
 	seenHosts.insert(urlParser->host);
 	printf("passed\n");
+	LeaveCriticalSection(&hostMutex);
+
+	if (!DnsLookup(urlParser->host)) {
+		return;
+	}
 
 	// robot
-	ret = sock->Send(urlParser, Socket::robots);
+	ret = sock->Send(urlParser, hostAddr, Socket::robots);
 	if (!ret) {
 		return;
 	}
@@ -92,7 +98,7 @@ void Request::RequestURL(const char* url) {
 	delete sock;
 	sock = new Socket();
 
-	ret = sock->Send(urlParser, Socket::page);
+	ret = sock->Send(urlParser, hostAddr, Socket::page);
 	if (!ret) {
 		return;
 	}
@@ -128,4 +134,55 @@ void Request::RequestURL(const char* url) {
 	}
 
 	return;
+}
+
+bool Request::DnsLookup(string host) {
+	if (hostAddr.S_un.S_addr != 0) {
+		// dns lookup is done 
+		return true;
+	}
+
+	// structure used in DNS lookups
+	struct hostent* remote;
+
+	clock_t timer = clock();
+	printf("\tDoing DNS... ");
+	// first assume that the string is an IP address
+	const char* hostChars = host.c_str();
+	DWORD IP = inet_addr(hostChars);
+	if (IP == INADDR_NONE)
+	{
+		// if not a valid IP, then do a DNS lookup
+		if ((remote = gethostbyname(hostChars)) == NULL)
+		{
+			printf("failed with %d\n", WSAGetLastError());
+			//printf("Invalid string: neither FQDN, nor IP address\n");
+			return false;
+		}
+		else // take the first IP address and copy into sin_addr
+			memcpy((char*)&(hostAddr), remote->h_addr, remote->h_length);
+	}
+	else
+	{
+		// if a valid IP, directly drop its binary version into sin_addr
+		hostAddr.S_un.S_addr = IP;
+	}
+
+	timer = clock() - timer;
+	printf("done in %d ms, found %s\n", 1000 * timer / CLOCKS_PER_SEC, inet_ntoa(hostAddr));
+
+	printf("\tChecking IP uniqueness... ");
+	//printf("int: %d\n str: %s\n", hostAddr.S_un.S_addr, inet_ntoa(hostAddr));
+	if (seenIPs.find(hostAddr.S_un.S_addr) != seenIPs.end()) {
+		printf("failed\n");
+		return false;
+	}
+
+
+	EnterCriticalSection(&ipMutex);
+	seenIPs.insert(hostAddr.S_un.S_addr);
+	printf("passed\n");
+	LeaveCriticalSection(&ipMutex);
+
+	return true;
 }

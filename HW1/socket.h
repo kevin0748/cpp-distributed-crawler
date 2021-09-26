@@ -27,6 +27,6 @@ public:
 
     Socket();
     ~Socket();
-    bool Send(URLParser* urlParser, SendType sendType);
+    bool Send(URLParser* urlParser, struct  in_addr hostAddr, SendType sendType);
     bool Read(int maxDownloadSize);
 };
