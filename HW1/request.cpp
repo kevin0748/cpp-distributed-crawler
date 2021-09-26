@@ -16,7 +16,7 @@ Request::~Request() {
 
 
 int parseResponseStatus(char* const buf) {
-	printf("\tVerifying header... ");
+	// printf("\tVerifying header... ");
 
 	int status = 0;
 	char* startOfStatus = strstr(buf, "HTTP/");
@@ -31,39 +31,40 @@ int parseResponseStatus(char* const buf) {
 		status = atoi(statusStr);
 	}
 	else {
-		printf("failed with non-HTTP header\n");
+		// printf("failed with non-HTTP header\n");
 		return -1;
 	}
 
-	printf("status code %d\n", status);
+	// printf("status code %d\n", status);
 	return status;
 }
 
 void Request::RequestURL(string url) {
-	printf("URL: %s\n", url.c_str());
+	// printf("URL: %s\n", url.c_str());
 
-	printf("\tParsing URL... ");
+	// printf("\tParsing URL... ");
 	bool ret = urlParser->parse(url);
 	if (!ret) {
 		return;
 	}
 
+	/*
 	printf("host %s, port %d\n",
 		urlParser->host.c_str(),
 		urlParser->port,
-		urlParser->getRequest().c_str());
+		urlParser->getRequest().c_str());*/
 
 
 	// check host uniqueness
-	printf("\tChecking host uniqueness... ");
+	// printf("\tChecking host uniqueness... ");
 	if (seenHosts.find(urlParser->host) != seenHosts.end()) {
-		printf("failed\n");
+		// printf("failed\n");
 		return;
 	}
 
 	EnterCriticalSection(&hostMutex);
 	seenHosts.insert(urlParser->host);
-	printf("passed\n");
+	// printf("passed\n");
 	LeaveCriticalSection(&hostMutex);
 
 	if (!DnsLookup(urlParser->host)) {
@@ -77,14 +78,14 @@ void Request::RequestURL(string url) {
 	}
 
 	clock_t timer = clock();
-	printf("\tLoading... ");
+	// printf("\tLoading... ");
 	ret = sock->Read(MAX_ROBOTS_DOWNLOAD_SIZE);
 	if (!ret) {
 		return;
 	}
 
 	timer = clock() - timer;
-	printf("done in %d ms with %d bytes\n", 1000 * timer / CLOCKS_PER_SEC, sock->curPos);
+	// printf("done in %d ms with %d bytes\n", 1000 * timer / CLOCKS_PER_SEC, sock->curPos);
 
 	//printf("%s\n", sock->buf);
 
@@ -103,14 +104,14 @@ void Request::RequestURL(string url) {
 		return;
 	}
 
-	printf("\tLoading... ");
+	// printf("\tLoading... ");
 	ret = sock->Read(MAX_PAGE_DOWNLOAD_SIZE);
 	if (!ret) {
 		return;
 	}
 
 	timer = clock() - timer;
-	printf("done in %d ms with %d bytes\n", 1000 * timer / CLOCKS_PER_SEC, sock->curPos);
+	// printf("done in %d ms with %d bytes\n", 1000 * timer / CLOCKS_PER_SEC, sock->curPos);
 
 	status = parseResponseStatus(sock->buf);
 	if (status == -1) {
@@ -121,7 +122,7 @@ void Request::RequestURL(string url) {
 		sprintf_s(baseUrl, "%s://%s", urlParser->scheme.c_str(), urlParser->host.c_str());
 
 		timer = clock();
-		printf("\t\b\b+ Parsing page... ");
+		// printf("\t\b\b+ Parsing page... ");
 		int nLinks;
 		char* linkBuffer = htmlParser->Parse(sock->buf, sock->curPos, baseUrl, (int)strlen(baseUrl), &nLinks);
 
@@ -130,7 +131,7 @@ void Request::RequestURL(string url) {
 			nLinks = 0;
 
 		timer = clock() - timer;
-		printf("done in %d ms with %d links\n", 1000 * timer / CLOCKS_PER_SEC, nLinks);
+		// printf("done in %d ms with %d links\n", 1000 * timer / CLOCKS_PER_SEC, nLinks);
 	}
 
 	return;
@@ -146,7 +147,7 @@ bool Request::DnsLookup(string host) {
 	struct hostent* remote;
 
 	clock_t timer = clock();
-	printf("\tDoing DNS... ");
+	// printf("\tDoing DNS... ");
 	// first assume that the string is an IP address
 	const char* hostChars = host.c_str();
 	DWORD IP = inet_addr(hostChars);
@@ -155,7 +156,7 @@ bool Request::DnsLookup(string host) {
 		// if not a valid IP, then do a DNS lookup
 		if ((remote = gethostbyname(hostChars)) == NULL)
 		{
-			printf("failed with %d\n", WSAGetLastError());
+			// printf("failed with %d\n", WSAGetLastError());
 			//printf("Invalid string: neither FQDN, nor IP address\n");
 			return false;
 		}
@@ -169,19 +170,19 @@ bool Request::DnsLookup(string host) {
 	}
 
 	timer = clock() - timer;
-	printf("done in %d ms, found %s\n", 1000 * timer / CLOCKS_PER_SEC, inet_ntoa(hostAddr));
+	// printf("done in %d ms, found %s\n", 1000 * timer / CLOCKS_PER_SEC, inet_ntoa(hostAddr));
 
-	printf("\tChecking IP uniqueness... ");
+	// printf("\tChecking IP uniqueness... ");
 	//printf("int: %d\n str: %s\n", hostAddr.S_un.S_addr, inet_ntoa(hostAddr));
 	if (seenIPs.find(hostAddr.S_un.S_addr) != seenIPs.end()) {
-		printf("failed\n");
+		// printf("failed\n");
 		return false;
 	}
 
 
 	EnterCriticalSection(&ipMutex);
 	seenIPs.insert(hostAddr.S_un.S_addr);
-	printf("passed\n");
+	// printf("passed\n");
 	LeaveCriticalSection(&ipMutex);
 
 	return true;

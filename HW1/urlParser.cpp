@@ -16,7 +16,7 @@ bool URLParser::parse(string url)
 	size_t schemeEnd = url.find("://");
 	if (schemeEnd == string::npos)
 	{
-		printf("url parse failed: missing scheme\n");
+		// printf("url parse failed: missing scheme\n");
 		return false;
 	}
 	else
@@ -26,7 +26,7 @@ bool URLParser::parse(string url)
 	}
 
 	if (scheme != "http") {
-		printf("failed with invalid scheme\n");
+		// printf("failed with invalid scheme\n");
 		return false;
 	}
 
@@ -75,7 +75,7 @@ bool URLParser::parseHostPort(string hostPort)
 	if (portStart != string::npos)
 	{
 		if (portStart + 1 >= hostPort.size()) {
-			printf("failed with invalid port\n");
+			// printf("failed with invalid port\n");
 			return false;
 		}
 
@@ -90,16 +90,16 @@ bool URLParser::parseHostPort(string hostPort)
 
 	if (host.size() == 0)
 	{
-		printf("url parse failed: missing host\n");
+		// printf("url parse failed: missing host\n");
 		return false;
 	}
 	else if (host.size() >= MAX_HOST_LEN)
 	{
-		printf("failed with host len larger than MAX_HOST_LEN\n");
+		// printf("failed with host len larger than MAX_HOST_LEN\n");
 	}
 
 	if (port == 0) {
-		printf("failed with invalid port\n");
+		// printf("failed with invalid port\n");
 		return false;
 	}
 

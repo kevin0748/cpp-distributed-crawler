@@ -58,20 +58,20 @@ bool Socket::Send(URLParser* urlParser, struct  in_addr hostAddr, SendType sendT
 
     clock_t timer = clock();
     if (sendType == robots) {
-        printf("\tConnecting on robots... ");
+        // printf("\tConnecting on robots... ");
     }
     else if (sendType == page) {
-        printf("\t\b\b* Connecting on page... ");
+       // printf("\t\b\b* Connecting on page... ");
     }
     
     // connect to the server on port 80
     if (connect(sock, (struct sockaddr*)&server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
     {
-        printf("Connection error: %d\n", WSAGetLastError());
+        // printf("Connection error: %d\n", WSAGetLastError());
         return false;
     }
     timer = clock() - timer;
-    printf("done in %d ms\n", 1000 * timer / CLOCKS_PER_SEC);
+    // printf("done in %d ms\n", 1000 * timer / CLOCKS_PER_SEC);
 
     // printf("Successfully connected to %s (%s) on port %d\n", host, inet_ntoa(server.sin_addr), htons(server.sin_port));
 
@@ -86,7 +86,7 @@ bool Socket::Send(URLParser* urlParser, struct  in_addr hostAddr, SendType sendT
     
     // printf("len: %d str:%s\n", sizeof(sendBuf), sendBuf);
     if (send(sock, sendBuf, sizeof(sendBuf), 0) == SOCKET_ERROR) {
-        printf("Send error: %d\n", WSAGetLastError);
+        // printf("Send error: %d\n", WSAGetLastError);
         return false;
     }
 
@@ -131,7 +131,7 @@ bool Socket::Read(int maxDownloadSize)
 
             int bytes = recv(sock, buf + curPos, allocatedSize - curPos, 0);
             if (bytes == SOCKET_ERROR) {
-                printf("failed with %d on recv\n", WSAGetLastError());
+                // printf("failed with %d on recv\n", WSAGetLastError());
                 break;
             }
 
@@ -144,11 +144,11 @@ bool Socket::Read(int maxDownloadSize)
             curPos += bytes; // adjust where the next recv goes
 
             if (curPos > maxDownloadSize) {
-                printf("exceed maxDownloadSize\n");
+                // printf("exceed maxDownloadSize\n");
                 return false;
             }
             if ( (clock() - downloadTimer)/CLOCKS_PER_SEC > MAX_DOWNLOAD_TIME) {
-                printf("exceed maxDownloadTime\n");
+                // printf("exceed maxDownloadTime\n");
                 return false;
             }
 
@@ -158,7 +158,7 @@ bool Socket::Read(int maxDownloadSize)
                 int newSize = allocatedSize * 2;
                 char *newbuf = (char*)realloc(buf, newSize);
                 if (newbuf == nullptr) {
-                    printf("failed to realloc recv buffer\n");
+                    // printf("failed to realloc recv buffer\n");
                     return false;
                 }
                 buf = newbuf;
@@ -168,11 +168,11 @@ bool Socket::Read(int maxDownloadSize)
         }
         else if (ret == 0) {
             // report timeout
-            printf("recv: timeout\n");
+            // printf("recv: timeout\n");
             break;
         }
         else {
-            printf("recv error: %d\n", WSAGetLastError());
+            // printf("recv error: %d\n", WSAGetLastError());
             break;
         }
     }
