@@ -50,46 +50,63 @@ DWORD WINAPI threadCrawler(LPVOID pParam) {
 	HTMLParserBase* htmlParser = new HTMLParserBase();
 
 	while (1) {
-		EnterCriticalSection(&(crawler->crawlerMutex)); // lock mutex
-
+		EnterCriticalSection(&(crawler->queueMutex)); // lock mutex
 		if (crawler->Q.size() == 0)
 		{
-			LeaveCriticalSection(&(crawler->crawlerMutex));
+			LeaveCriticalSection(&(crawler->queueMutex));
 			break;
 		}
 
 		string url = crawler->Q.front(); crawler->Q.pop();
-		LeaveCriticalSection(&(crawler->crawlerMutex));
+		LeaveCriticalSection(&(crawler->queueMutex));
+
+		// stats purpose
+		InterlockedIncrement(&crawler->extractedUrlsCnt);
 
 		crawler->Crawl(htmlParser, url);
 	}
 
+	InterlockedDecrement(&crawler->activeThreadsCnt);
 	delete htmlParser;
 	return 0;
 }
 
 DWORD WINAPI threadStats(LPVOID pParam) {
-	Crawler* crawler = (Crawler*)(pParam);
+	Crawler* crawler = ((Crawler*)pParam);
 	crawler->Stats();
 	return 0;
 }
 
 int runCrawler(Crawler* crawler, int threadNum) {
 	HANDLE* handles = new HANDLE[threadNum];
+	HANDLE statsHandle;
+
+	statsHandle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadStats, crawler, 0, NULL);
+	if (statsHandle == NULL) {
+		printf("failed to create stats thread\n");
+		return 1;
+	}
+
 	for (int i = 0; i < threadNum; ++i)
 	{
 		handles[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadCrawler, crawler, 0, NULL);
 		if (handles[i] == NULL) {
-			printf("failed to create thread %d\n", i);
+			printf("failed to create crawler thread %d\n", i);
+			return 1;
 		}
-	}
 
+		InterlockedIncrement(&crawler->activeThreadsCnt);
+	}
 
 	for (int i = 0; i < threadNum; ++i)
 	{
 		WaitForSingleObject(handles[i], INFINITE);
 		CloseHandle(handles[i]);
 	}
+
+	SetEvent(crawler->eventQuit);
+	WaitForSingleObject(statsHandle, 5000);
+	CloseHandle(statsHandle);
 
 	return 0;
 }
@@ -143,7 +160,7 @@ int main(int argc, char* argv[]) {
 
 	printf("Opened %s with size %d\n", filename, fileSize);
 
-	int threadNum = 1000;
+	int threadNum = 5000;
 	Crawler crawler;
 	parseAndPushToCrawler(fileBuf, fileSize, &crawler);
 

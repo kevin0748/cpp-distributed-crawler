@@ -1,10 +1,11 @@
 #include "pch.h"
 #include "request.h"
 
-Request::Request(HTMLParserBase *_htmlParser) {
+Request::Request(HTMLParserBase *_htmlParser, Crawler *_crawler) {
 	urlParser = new URLParser();
 	htmlParser = _htmlParser;
 	sock = new Socket();
+	crawler = _crawler;
 
 	hostAddr.S_un.S_addr = 0;
 }
@@ -14,7 +15,7 @@ Request::~Request() {
 	delete sock;
 }
 
-
+// parseResponseStatus returns -1 when failed.
 int parseResponseStatus(char* const buf) {
 	// printf("\tVerifying header... ");
 
@@ -57,20 +58,25 @@ void Request::RequestURL(string url) {
 
 	// check host uniqueness
 	// printf("\tChecking host uniqueness... ");
-	if (seenHosts.find(urlParser->host) != seenHosts.end()) {
+	EnterCriticalSection(&crawler->hostMutex);
+	if (crawler->seenHosts.find(urlParser->host) != crawler->seenHosts.end()) {
 		// printf("failed\n");
+		LeaveCriticalSection(&crawler->hostMutex);
 		return;
 	}
 
-	EnterCriticalSection(&hostMutex);
-	seenHosts.insert(urlParser->host);
+	
+	crawler->seenHosts.insert(urlParser->host);
 	// printf("passed\n");
-	LeaveCriticalSection(&hostMutex);
+	LeaveCriticalSection(&crawler->hostMutex);
+
+	// stats purpose
+	InterlockedIncrement(&crawler->uqHostUrlsCnt);
 
 	if (!DnsLookup(urlParser->host)) {
 		return;
 	}
-
+	
 	// robot
 	ret = sock->Send(urlParser, hostAddr, Socket::robots);
 	if (!ret) {
@@ -86,6 +92,9 @@ void Request::RequestURL(string url) {
 
 	timer = clock() - timer;
 	// printf("done in %d ms with %d bytes\n", 1000 * timer / CLOCKS_PER_SEC, sock->curPos);
+	
+	// stats purpose
+	InterlockedAdd(&crawler->totalBytes, (LONG)sock->curPos);
 
 	//printf("%s\n", sock->buf);
 
@@ -94,6 +103,9 @@ void Request::RequestURL(string url) {
 		// robots.txt exists. We should skip this website.
 		return;
 	}
+
+	// stats purpose
+	InterlockedIncrement(&crawler->succRobotCnt);
 
 	// Create new socket to accept new connection
 	delete sock;
@@ -116,8 +128,7 @@ void Request::RequestURL(string url) {
 	status = parseResponseStatus(sock->buf);
 	if (status == -1) {
 		return;
-	}
-	else if (status >= 200 && status < 300) {
+	} else if (status >= 200 && status < 300) {
 		char baseUrl[512];
 		sprintf_s(baseUrl, "%s://%s", urlParser->scheme.c_str(), urlParser->host.c_str());
 
@@ -132,7 +143,29 @@ void Request::RequestURL(string url) {
 
 		timer = clock() - timer;
 		// printf("done in %d ms with %d links\n", 1000 * timer / CLOCKS_PER_SEC, nLinks);
+		
+		// stats purpose
+		InterlockedAdd(&crawler->totalLinks, (LONG)nLinks);
+		InterlockedIncrement(&crawler->totalPages);
+		InterlockedAdd(&crawler->totalBytes, (LONG)sock->curPos);
+		InterlockedIncrement(&crawler->httpCode2xx);
+	} else if (status >= 300 && status < 400) {
+		InterlockedIncrement(&crawler->httpCode3xx);
 	}
+	else if (status >= 400 && status < 500) {
+		InterlockedIncrement(&crawler->httpCode4xx);
+	}
+	else if (status >= 500 && status < 600) {
+		InterlockedIncrement(&crawler->httpCode5xx);
+	}
+	else {
+		InterlockedIncrement(&crawler->httpCodeOther);
+	}
+
+
+
+	// stats purpose
+	InterlockedIncrement(&crawler->succCrawledUrlCnt);
 
 	return;
 }
@@ -172,18 +205,24 @@ bool Request::DnsLookup(string host) {
 	timer = clock() - timer;
 	// printf("done in %d ms, found %s\n", 1000 * timer / CLOCKS_PER_SEC, inet_ntoa(hostAddr));
 
+	// stats purpose
+	InterlockedIncrement(&crawler->succDnsCnt);
+
 	// printf("\tChecking IP uniqueness... ");
 	//printf("int: %d\n str: %s\n", hostAddr.S_un.S_addr, inet_ntoa(hostAddr));
-	if (seenIPs.find(hostAddr.S_un.S_addr) != seenIPs.end()) {
+	EnterCriticalSection(&crawler->ipMutex);
+	if (crawler->seenIPs.find(hostAddr.S_un.S_addr) != crawler->seenIPs.end()) {
 		// printf("failed\n");
+		LeaveCriticalSection(&crawler->ipMutex);
 		return false;
 	}
 
-
-	EnterCriticalSection(&ipMutex);
-	seenIPs.insert(hostAddr.S_un.S_addr);
+	crawler->seenIPs.insert(hostAddr.S_un.S_addr);
 	// printf("passed\n");
-	LeaveCriticalSection(&ipMutex);
+	LeaveCriticalSection(&crawler->ipMutex);
+
+	// stats purpose
+	InterlockedIncrement(&crawler->uqIpUrlsCnt);
 
 	return true;
 }

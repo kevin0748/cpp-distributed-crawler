@@ -2,6 +2,7 @@
 class Crawler
 {
 public:
+	CRITICAL_SECTION queueMutex;
 	queue<string> Q;
 
 	CRITICAL_SECTION hostMutex;
@@ -11,22 +12,24 @@ public:
 	unordered_set<ULONG> seenIPs;
 
 	// statistical variables
-	int activeThreadsCnt;
-	int extractedUrlsCnt;
-	int uniqueHostUrlsCnt;
-	int successDnsCnt;
-	int uniqueIpUrlsCnt;
-	int passRobotCnt;
-	int successCrawledUrlCnt;
-	int totalLink;
+	LONG volatile activeThreadsCnt;
+	LONG volatile extractedUrlsCnt;
+	LONG volatile uqHostUrlsCnt;
+	LONG volatile succDnsCnt;
+	LONG volatile uqIpUrlsCnt;
+	LONG volatile succRobotCnt;
+	LONG volatile succCrawledUrlCnt;
+	LONG volatile totalLinks;
 
-	int totalPages;
-	int totalBytes;
+	LONG volatile totalPages;
+	LONG volatile totalBytes;
 
-	unordered_map<string,int> httpCodes;
+	LONG volatile httpCode2xx;
+	LONG volatile httpCode3xx;
+	LONG volatile httpCode4xx;
+	LONG volatile httpCode5xx;
+	LONG volatile httpCodeOther;
 
-	// multi-thread 
-	CRITICAL_SECTION crawlerMutex;
 	HANDLE eventQuit;
 
 	// method

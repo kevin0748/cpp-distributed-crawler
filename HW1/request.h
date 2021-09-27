@@ -1,15 +1,17 @@
 #pragma once
 #include "Crawler.h"
 
-class Request: public Crawler
+class Request
 {
 public:
-	URLParser* urlParser;
 	HTMLParserBase* htmlParser;
+	Crawler* crawler;
+
+	URLParser* urlParser;
 	Socket* sock;
 	in_addr hostAddr;
 
-	Request(HTMLParserBase* htmlParser);
+	Request(HTMLParserBase* htmlParser, Crawler *crawler);
 	~Request();
 
 	// TODO: request return stats info
