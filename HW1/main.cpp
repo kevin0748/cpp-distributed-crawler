@@ -40,8 +40,8 @@ void parseAndPushToCrawler(const char* fileBuf, int fileSize, Crawler *crawler) 
 		fileBuf += lineLen;
 		readCursor += lineLen;
 
-		delete[]line;
-		delete[]url;
+		delete[] line;
+		delete[] url;
 	}
 }
 
@@ -164,11 +164,11 @@ int main(int argc, char* argv[]) {
 	Crawler crawler;
 	parseAndPushToCrawler(fileBuf, fileSize, &crawler);
 
-	runCrawler(&crawler, threadNum);
-
 	// done with the file
 	CloseHandle(hFile);
-	delete[] fileBuf;
+	delete[] fileBuf; fileBuf = NULL;
+
+	runCrawler(&crawler, threadNum);
 
 	return 0;
 }
