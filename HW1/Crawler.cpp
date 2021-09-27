@@ -58,7 +58,7 @@ void Crawler::Stats() {
 			uqIpUrlsCnt, // I
 			succRobotCnt, // R
 			succCrawledUrlCnt, // C
-			totalLinks / 1000); // L
+			(float)totalLinks / 1000.0); // L
 
 		elapse = (float)(clock() - lastReportAt) / (float)CLOCKS_PER_SEC;
 		printf("   *** crawling %.1f pps @ %.1f Mbps\n", 
