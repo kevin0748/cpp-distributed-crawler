@@ -48,7 +48,7 @@ void Crawler::Stats() {
 		int queueSize = Q.size();
 		LeaveCriticalSection(&queueMutex);
 
-		printf("[%3d] %3d Q%6d E%7d H%6d D%6d I%5d R%5d C%5d L%4.fK\n", 
+		printf("[%3d] %4d Q %6d E %7d H %6d D %6d I %5d R %5d C %5d L %4.fK\n", 
 			(clock() - startAt) / CLOCKS_PER_SEC,
 			activeThreadsCnt,
 			queueSize, // Q
