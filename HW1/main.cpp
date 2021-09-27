@@ -114,12 +114,13 @@ int runCrawler(Crawler* crawler, int threadNum) {
 int main(int argc, char* argv[]) {
 	if (argc != 3) {
 		printf("invalid argument.\n");
-		printf("[Usage] HW1.exe 1 $file\n");
+		printf("[Usage] HW1.exe $threadNum $file\n");
 		exit(1);
 	}
 
-	if (strcmp(argv[1], "1") != 0) {
-		printf("number of threads must be equal to 1\n");
+	int threadNum = strtol(argv[1], NULL, 10);
+	if (threadNum <= 0) {
+		printf("invalid number of threads\n");
 		exit(1);
 	}
 
@@ -160,7 +161,6 @@ int main(int argc, char* argv[]) {
 
 	printf("Opened %s with size %d\n", filename, fileSize);
 
-	int threadNum = 5000;
 	Crawler crawler;
 	parseAndPushToCrawler(fileBuf, fileSize, &crawler);
 
