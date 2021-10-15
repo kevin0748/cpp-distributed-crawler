@@ -18,9 +18,12 @@
 #include <windows.h>
 #include <ctime>
 #include <unordered_set>
+#include <unordered_map>
+#include <queue>
 
 #include "HTMLParserBase.h"
 #include "urlParser.h"
 #include "socket.h"
 #include "request.h"
+#include "Crawler.h"
 #endif //PCH_H

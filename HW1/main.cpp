@@ -6,7 +6,7 @@
 #include "pch.h"
 #pragma comment(lib, "ws2_32.lib")
 
-void parseAndRequestURLs(const char* fileBuf, int fileSize) {
+void parseAndPushToCrawler(const char* fileBuf, int fileSize, Crawler *crawler) {
 	int readCursor = 0;
 	while (readCursor < fileSize) {
 		int lineLen = 0;
@@ -34,27 +34,93 @@ void parseAndRequestURLs(const char* fileBuf, int fileSize) {
 		strncpy_s(url, urlLen + 1, line, urlLen);
 		url[urlLen] = NULL;
 
-		Request* req = new Request();
-		req->RequestURL(url);
+		string sUrl(url);
+		crawler->Q.push(sUrl);
 		
 		fileBuf += lineLen;
 		readCursor += lineLen;
 
-		delete req;
-		delete[]line;
-		delete[]url;
+		delete[] line;
+		delete[] url;
 	}
+}
+
+DWORD WINAPI threadCrawler(LPVOID pParam) {
+	Crawler* crawler = ((Crawler*)pParam);
+	HTMLParserBase* htmlParser = new HTMLParserBase();
+
+	while (1) {
+		EnterCriticalSection(&(crawler->queueMutex)); // lock mutex
+		if (crawler->Q.size() == 0)
+		{
+			LeaveCriticalSection(&(crawler->queueMutex));
+			break;
+		}
+
+		string url = crawler->Q.front(); crawler->Q.pop();
+		LeaveCriticalSection(&(crawler->queueMutex));
+
+		// stats purpose
+		InterlockedIncrement(&crawler->extractedUrlsCnt);
+
+		crawler->Crawl(htmlParser, url);
+	}
+
+	InterlockedDecrement(&crawler->activeThreadsCnt);
+	delete htmlParser;
+	return 0;
+}
+
+DWORD WINAPI threadStats(LPVOID pParam) {
+	Crawler* crawler = ((Crawler*)pParam);
+	crawler->Stats();
+	return 0;
+}
+
+int runCrawler(Crawler* crawler, int threadNum) {
+	HANDLE* handles = new HANDLE[threadNum];
+	HANDLE statsHandle;
+
+	statsHandle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadStats, crawler, 0, NULL);
+	if (statsHandle == NULL) {
+		printf("failed to create stats thread\n");
+		return 1;
+	}
+
+	for (int i = 0; i < threadNum; ++i)
+	{
+		handles[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadCrawler, crawler, 0, NULL);
+		if (handles[i] == NULL) {
+			printf("failed to create crawler thread %d\n", i);
+			return 1;
+		}
+
+		InterlockedIncrement(&crawler->activeThreadsCnt);
+	}
+
+	for (int i = 0; i < threadNum; ++i)
+	{
+		WaitForSingleObject(handles[i], INFINITE);
+		CloseHandle(handles[i]);
+	}
+
+	SetEvent(crawler->eventQuit);
+	WaitForSingleObject(statsHandle, 5000);
+	CloseHandle(statsHandle);
+
+	return 0;
 }
 
 int main(int argc, char* argv[]) {
 	if (argc != 3) {
 		printf("invalid argument.\n");
-		printf("[Usage] HW1.exe 1 $file\n");
+		printf("[Usage] HW1.exe $threadNum $file\n");
 		exit(1);
 	}
 
-	if (strcmp(argv[1], "1") != 0) {
-		printf("number of threads must be equal to 1\n");
+	int threadNum = strtol(argv[1], NULL, 10);
+	if (threadNum <= 0) {
+		printf("invalid number of threads\n");
 		exit(1);
 	}
 
@@ -95,11 +161,14 @@ int main(int argc, char* argv[]) {
 
 	printf("Opened %s with size %d\n", filename, fileSize);
 
-	parseAndRequestURLs(fileBuf, fileSize);
+	Crawler crawler;
+	parseAndPushToCrawler(fileBuf, fileSize, &crawler);
 
 	// done with the file
 	CloseHandle(hFile);
-	delete fileBuf;
+	delete[] fileBuf; fileBuf = NULL;
+
+	runCrawler(&crawler, threadNum);
 
 	return 0;
 }

@@ -1,14 +1,21 @@
 #pragma once
+#include "Crawler.h"
+
 class Request
 {
 public:
-	URLParser* urlParser;
 	HTMLParserBase* htmlParser;
-	Socket* sock;
+	Crawler* crawler;
 
-	Request();
+	URLParser* urlParser;
+	Socket* sock;
+	in_addr hostAddr;
+
+	Request(HTMLParserBase* htmlParser, Crawler *crawler);
 	~Request();
 
-	void RequestURL(const char* url);
+	// TODO: request return stats info
+	void RequestURL(string url);
+	bool DnsLookup(string host);
 };
 

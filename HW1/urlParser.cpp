@@ -5,56 +5,51 @@
 
 #include "pch.h"
 
-unordered_set<ULONG> seenIPs;
-
 URLParser::URLParser() {
-	hostAddr.S_un.S_addr = 0;
 }
 
 URLParser::~URLParser() {
 }
 
-bool URLParser::parse(const char* url)
+bool URLParser::parse(string url)
 {
-	string sUrl(url);
-
-	size_t schemeEnd = sUrl.find("://");
+	size_t schemeEnd = url.find("://");
 	if (schemeEnd == string::npos)
 	{
-		printf("url parse failed: missing scheme\n");
+		// printf("url parse failed: missing scheme\n");
 		return false;
 	}
 	else
 	{
-		scheme = sUrl.substr(0, schemeEnd);
-		sUrl = sUrl.substr(schemeEnd + 3); // skip `://`
+		scheme = url.substr(0, schemeEnd);
+		url = url.substr(schemeEnd + 3); // skip `://`
 	}
 
 	if (scheme != "http") {
-		printf("failed with invalid scheme\n");
+		// printf("failed with invalid scheme\n");
 		return false;
 	}
 
-	size_t fragmentStart = sUrl.find('#');
+	size_t fragmentStart = url.find('#');
 	if (fragmentStart != string::npos)
 	{
-		fragment = sUrl.substr(fragmentStart);
-		sUrl = sUrl.substr(0, fragmentStart);
+		fragment = url.substr(fragmentStart);
+		url = url.substr(0, fragmentStart);
 	}
 
-	size_t queryStart = sUrl.find('?');
+	size_t queryStart = url.find('?');
 	if (queryStart != string::npos)
 	{
-		query = sUrl.substr(queryStart + 1, fragmentStart);
-		sUrl = sUrl.substr(0, queryStart);
+		query = url.substr(queryStart + 1, fragmentStart);
+		url = url.substr(0, queryStart);
 	}
 
-	size_t hostPortEnd = sUrl.find("/");
+	size_t hostPortEnd = url.find("/");
 	if (hostPortEnd != string::npos)
 	{
-		string hostPort = sUrl.substr(0, hostPortEnd);
-		sUrl = sUrl.substr(hostPortEnd);
-		path = sUrl;
+		string hostPort = url.substr(0, hostPortEnd);
+		url = url.substr(hostPortEnd);
+		path = url;
 
 		if (!parseHostPort(hostPort))
 		{
@@ -65,7 +60,7 @@ bool URLParser::parse(const char* url)
 	{
 		path = "/";
 
-		if (!parseHostPort(sUrl))
+		if (!parseHostPort(url))
 		{
 			return false;
 		}
@@ -80,7 +75,7 @@ bool URLParser::parseHostPort(string hostPort)
 	if (portStart != string::npos)
 	{
 		if (portStart + 1 >= hostPort.size()) {
-			printf("failed with invalid port\n");
+			// printf("failed with invalid port\n");
 			return false;
 		}
 
@@ -95,16 +90,16 @@ bool URLParser::parseHostPort(string hostPort)
 
 	if (host.size() == 0)
 	{
-		printf("url parse failed: missing host\n");
+		// printf("url parse failed: missing host\n");
 		return false;
 	}
 	else if (host.size() >= MAX_HOST_LEN)
 	{
-		printf("failed with host len larger than MAX_HOST_LEN\n");
+		// printf("failed with host len larger than MAX_HOST_LEN\n");
 	}
 
 	if (port == 0) {
-		printf("failed with invalid port\n");
+		// printf("failed with invalid port\n");
 		return false;
 	}
 
@@ -146,52 +141,4 @@ string URLParser::getRequest() {
 
 string URLParser::getRobots() {
 	return "/robots.txt";
-}
-
-bool URLParser::dnsLookup() {
-	if (hostAddr.S_un.S_addr != 0) {
-		// dns lookup is done 
-		return true;
-	}
-
-	// structure used in DNS lookups
-	struct hostent* remote;
-
-	clock_t timer = clock();
-	printf("\tDoing DNS... ");
-	// first assume that the string is an IP address
-	const char* hostChars = host.c_str();
-	DWORD IP = inet_addr(hostChars);
-	if (IP == INADDR_NONE)
-	{
-		// if not a valid IP, then do a DNS lookup
-		if ((remote = gethostbyname(hostChars)) == NULL)
-		{
-			printf("failed with %d\n", WSAGetLastError());
-			//printf("Invalid string: neither FQDN, nor IP address\n");
-			return false;
-		}
-		else // take the first IP address and copy into sin_addr
-			memcpy((char*)&(hostAddr), remote->h_addr, remote->h_length);
-	}
-	else
-	{
-		// if a valid IP, directly drop its binary version into sin_addr
-		hostAddr.S_un.S_addr = IP;
-	}
-
-	timer = clock() - timer;
-	printf("done in %d ms, found %s\n", 1000 * timer / CLOCKS_PER_SEC, inet_ntoa(hostAddr));
-
-	printf("\tChecking IP uniqueness... ");
-	//printf("int: %d\n str: %s\n", hostAddr.S_un.S_addr, inet_ntoa(hostAddr));
-	if (seenIPs.find(hostAddr.S_un.S_addr) != seenIPs.end()) {
-		printf("failed\n");
-		return false;
-	}
-
-	seenIPs.insert(hostAddr.S_un.S_addr);
-	printf("passed\n");
-
-	return true;
 }
