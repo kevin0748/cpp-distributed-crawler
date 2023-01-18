@@ -2,9 +2,12 @@
 
 A distributed crawler written in C++ to parse webpage in windows socket with 5000+ threads concurrently. Constructed parsing report to examine success rate, maximum crawling speed, and number of target links.
 
+## Implementaion
+Parse URL -> Check host is unique -> DNS Lookup -> Check IP is unique -> Request robots -> Chekc HTTP code -> Request page -> Check HTTP code -> Parse page
+
 ## Usage
 ```sh
-HW1.exe $threadNum $file
+crawler.exe $threadNum $file
 ```
 
 ## Result
