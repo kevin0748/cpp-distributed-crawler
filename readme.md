@@ -1,6 +1,6 @@
-# cpp-distributed-drawler
+# cpp-distributed-crawler
 
-A distributed crawler written in c++.
+A distributed crawler written in C++ to parse webpage in windows socket with 5000+ threads concurrently. Constructed parsing report to examine success rate, maximum crawling speed, and number of target links.
 
 ## Usage
 ```sh
